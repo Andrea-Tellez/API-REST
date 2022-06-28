@@ -23,14 +23,14 @@ def test_id_clientes():
     assert response.json() == data
 
 def test_post_cliente():
-    payload = {"id_cliente":4"nombre":"Andrea", "email": "andrea@gmail.com"}
+    payload = {"id_cliente":4,"nombre":"Andrea", "email": "andrea@gmail.com"}
     response = clientes.post("/clientes/", json=payload) 
     Response = {"mensaje" : "Cliente agregado"}
     assert response.status_code == 200
     assert response.json() == Response
 
 def test_put_cliente():
-    payload = {"id_cliente":4"nombre" : "Monica", "email" : "monica@gmail.com"}
+    payload = {"id_cliente":4,"nombre" : "Monica", "email" : "monica@gmail.com"}
     response = clientes.put("/clientes/",json=payload)
     Response = {"mensaje" : "Cliente actualizado"}
     assert response.status_code == 200
