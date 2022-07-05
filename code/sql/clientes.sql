@@ -12,4 +12,4 @@ INSERT INTO clientes(nombre, email) VALUES ('Carthoris', 'carthoris@gmail.com');
 
 SELECT * FROM clientes;
 
- ##comment
+ ##coment 
