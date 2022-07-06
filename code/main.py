@@ -6,6 +6,7 @@ import os
 import hashlib 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.middleware.cors import CORSMiddleware
 
 class Respuesta(BaseModel):
     message: str
@@ -27,6 +28,20 @@ DATABASE_URL = os.path.join("sql/usuarios.sqlite")
 
 app=FastAPI()
 security = HTTPBasic()
+
+origins = {
+    "https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us51.gitpod.io/",
+    "https://8080-andreatellez-apirest-7qyzbm3hdnt.ws-us51.gitpod.io/"
+}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def get_current_level(credentials: HTTPBasicCredentials = Depends(security)):
     password_b = hashlib.md5(credentials.password.encode())
