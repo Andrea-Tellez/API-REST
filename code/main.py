@@ -30,8 +30,8 @@ app=FastAPI()
 security = HTTPBasic()
 
 origins = {
-    "https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us51.gitpod.io/",
-    "https://8080-andreatellez-apirest-7qyzbm3hdnt.ws-us51.gitpod.io/"
+    "https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us53.gitpod.io/",
+    "https://8080-andreatellez-apirest-7qyzbm3hdnt.ws-us53.gitpod.io/"
 }
 
 app.add_middleware(
@@ -91,11 +91,11 @@ async def clientes(level: int = Depends(get_current_level)):
     description="Metodo para regresar a un cliente indicado  por el ID", )
 async def id_clientes(id: int, level: int = Depends(get_current_level)):
     if level==0:
-        with sqlite3.connect("code/sql/clientes.sqlite") as connection:
+        with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
             cursor.execute("SELECT * FROM clientes WHERE id_cliente={}".format(int(id))) 
-            response = cursor.fetchall()
+            response = cursor.fetchone()
             return response
     else:
          raise HTTPException(
@@ -108,15 +108,16 @@ async def id_clientes(id: int, level: int = Depends(get_current_level)):
 
 @app.post("/clientes/",response_model=Respuesta, status_code=status.HTTP_202_ACCEPTED,
     summary="Metodo POST para insertar nuevos registros",
-    description="Metodo POST para insertar nuevos registros",) 
-async def post_cliente(nombre:str,email:str,level: int = Depends(get_current_level)):
-    if level==0:
-        with sqlite3.connect("code/sql/clientes.sqlite") as connection:
+    description="Metodo POST para insertar nuevos registros",
+) 
+async def post_cliente(cliente:ClienteIN, level: int = Depends(get_current_level)):
+    if level==0: 
+        with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
-            cursor.execute("INSERT INTO clientes(nombre,email) VALUES ('{}','{}')".format(nombre,email))
+            cursor.execute("INSERT INTO clientes(nombre,email) VALUES ('{}','{}')".format(cliente.nombre,cliente.email))
             response = cursor.fetchone()
-            message = {"mensaje" : "Cliente agregado"}
+            message = {"message" : "Cliente agregado"}
             return message
     else:
         raise HTTPException(
@@ -127,14 +128,14 @@ async def post_cliente(nombre:str,email:str,level: int = Depends(get_current_lev
 
 @app.put("/clientes/{id_cliente}",response_model=Respuesta, summary="Metodo para actualizar un registro indicando el id",
     description="Metodo para actualizar un registro indicando el id",)
-async def put_cliente(id_cliente:int,nombre:str,email:str,level: int = Depends(get_current_level)):
+async def put_cliente(cliente:Cliente,level: int = Depends(get_current_level)):
     if level==0:
-        with sqlite3.connect("code/sql/clientes.sqlite") as connection:
+        with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
-            cursor.execute("UPDATE clientes SET nombre = '{}', email = '{}' WHERE id_cliente={}".format(nombre,email,id_cliente))
+            cursor.execute("UPDATE clientes SET nombre = '{}', email = '{}' WHERE id_cliente={}".format(cliente.nombre,cliente.email,cliente.id_cliente))
             response = cursor.fetchone()
-            message = {"mensaje" : "Cliente actualizado"}
+            message = {"message" : "Cliente actualizado"}
             return message
     else:
           raise HTTPException(
@@ -147,12 +148,12 @@ async def put_cliente(id_cliente:int,nombre:str,email:str,level: int = Depends(g
     description="Metodo para eliminar un registro indicando el id",)
 async def delete_cliente(id_cliente:int,level: int = Depends(get_current_level)):
     if level==0:
-        with sqlite3.connect("code/sql/clientes.sqlite") as connection:
+        with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
             cursor.execute("DELETE FROM clientes WHERE id_cliente={}".format(id_cliente))
             response = cursor.fetchone()
-            message = {"mensaje" : "Cliente borrado"}
+            message = {"message" : "Cliente borrado"}
             return message
     else:
         raise HTTPException(
