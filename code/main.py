@@ -7,6 +7,8 @@ import hashlib
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import pyrebase
 
 class Respuesta(BaseModel):
     message: str
@@ -28,6 +30,7 @@ DATABASE_URL = os.path.join("sql/usuarios.sqlite")
 
 app=FastAPI()
 security = HTTPBasic()
+securityBearer = HTTPBearer()
 
 origins = {
     "https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us53.gitpod.io/",
@@ -42,6 +45,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+firebaseConfig = {
+  'apiKey': "AIzaSyAxqxiXiSyRhp1JSPHWp0ZmigR0KuTW7cs",
+  'authDomain': "fastapi-c5f98.firebaseapp.com",
+  'databaseURL': "https://fastapi-c5f98-default-rtdb.firebaseio.com",
+  'projectId': "fastapi-c5f98",
+  'storageBucket': "fastapi-c5f98.appspot.com",
+  'messagingSenderId': "373126825537",
+  'appId': "1:373126825537:web:dbc0af6a34fdb9540ee8c0"
+}
+
+firebase = pyrebase.initialize_app(firebaseConfig)
 
 def get_current_level(credentials: HTTPBasicCredentials = Depends(security)):
     password_b = hashlib.md5(credentials.password.encode())
@@ -163,8 +177,52 @@ async def delete_cliente(id_cliente:int,level: int = Depends(get_current_level))
         ) 
 
    
+"""firebase"""
+
+@app.get(
+    "/user/validate/",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Get a token for a user",
+    description="Get a token for a user",
+    tags=["auth"]
+)
+def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        email = credentials.username
+        password = credentials.password
+        auth = firebase.auth()
+        user = auth.sign_in_with_email_and_password(email,password)
+        response = {
+            "token" : user['idToken']
+        }
+        return response
+
+    except Exception as error:
+        print(f"ERROR: {error}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
+@app.get(
+    "/user/",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Get a user",
+    description="Get a user",
+    tags=["auth"]
+)
+async def get_user(credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    try:
+        auth = firebase.auth()
+        user = auth.get_account_info(credentials.credentials)
+        uid = user['users'][0]['localId']
 
+        db = firebase.database()
+        user_data = db.child("users").child(uid).get().val()
 
-
+        response = {
+            "user_data" : user_data
+        }
+        return response
+        
+    except Exception as error:
+        print(f"ERROR: {error}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
