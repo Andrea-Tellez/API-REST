@@ -16,13 +16,12 @@ function put_cliente(){
         "email": email.value
     }
 
-    var username = "admin";
-    var password = "admin";
+    token = sessionStorage.getItem("token")
 
-    request.open('PUT','https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us53.gitpod.io/clientes/' + id_cliente.value, true);
+    request.open('PUT','https://8000-andreatellez-apirest-7qyzbm3hdnt.ws-us59.gitpod.io/clientes/' + id_cliente.value, true);
     request.setRequestHeader("Accept", "application/json");
     request.setRequestHeader("content-type", "application/json");
-    request.setRequestHeader("Authorization", "Basic " + btoa(username + ":" + password))
+    request.setRequestHeader("Authorization", "Bearer " + token);
     request.onload = () =>{
         const response = request.responseText;
         const json = JSON.parse(response);

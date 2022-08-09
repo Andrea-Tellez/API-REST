@@ -26,6 +26,11 @@ class Usuarios(BaseModel):
     username: str
     level: int
 
+class Usuario(BaseModel):
+    username: str
+    password: str
+
+
 DATABASE_URL = os.path.join("sql/usuarios.sqlite")
 
 app=FastAPI()
@@ -39,7 +44,7 @@ origins = {
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +61,8 @@ firebaseConfig = {
 }
 
 firebase = pyrebase.initialize_app(firebaseConfig)
+auth = firebase.auth()
+db = firebase.database()
 
 def get_current_level(credentials: HTTPBasicCredentials = Depends(security)):
     password_b = hashlib.md5(credentials.password.encode())
@@ -84,8 +91,11 @@ async def index():
     summary="Metodo para ver todos los clientes de la base de datos",
     description="Metodo para ver todos los clientes de la base de datos",
 )
-async def clientes(level: int = Depends(get_current_level)):
-    if level==0:
+async def clientes(credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    user = auth.get_account_info(credentials.credentials)
+    uid = user['users'][0]['localId']
+    level = db.child("users").child(uid).child("Nivel").get().val()
+    if level==1:
          with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
@@ -103,8 +113,11 @@ async def clientes(level: int = Depends(get_current_level)):
 @app.get("/clientes/{id}",status_code=status.HTTP_202_ACCEPTED,
     summary="Metodo para regresar a un cliente indicado  por el ID",
     description="Metodo para regresar a un cliente indicado  por el ID", )
-async def id_clientes(id: int, level: int = Depends(get_current_level)):
-    if level==0:
+async def id_clientes(id: int, credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    user = auth.get_account_info(credentials.credentials)
+    uid = user['users'][0]['localId']
+    level = db.child("users").child(uid).child("Nivel").get().val()
+    if level==1:
         with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
@@ -124,8 +137,11 @@ async def id_clientes(id: int, level: int = Depends(get_current_level)):
     summary="Metodo POST para insertar nuevos registros",
     description="Metodo POST para insertar nuevos registros",
 ) 
-async def post_cliente(cliente:ClienteIN, level: int = Depends(get_current_level)):
-    if level==0: 
+async def post_cliente(cliente:ClienteIN, credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    user = auth.get_account_info(credentials.credentials)
+    uid = user['users'][0]['localId']
+    level = db.child("users").child(uid).child("Nivel").get().val()
+    if level==1:
         with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
@@ -142,8 +158,11 @@ async def post_cliente(cliente:ClienteIN, level: int = Depends(get_current_level
 
 @app.put("/clientes/{id_cliente}",response_model=Respuesta, summary="Metodo para actualizar un registro indicando el id",
     description="Metodo para actualizar un registro indicando el id",)
-async def put_cliente(cliente:Cliente,level: int = Depends(get_current_level)):
-    if level==0:
+async def put_cliente(cliente:Cliente,credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    user = auth.get_account_info(credentials.credentials)
+    uid = user['users'][0]['localId']
+    level = db.child("users").child(uid).child("Nivel").get().val()
+    if level==1:
         with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
@@ -160,8 +179,11 @@ async def put_cliente(cliente:Cliente,level: int = Depends(get_current_level)):
   
 @app.delete("/clientes/{id_cliente}",response_model=Respuesta,summary="Metodo para eliminar un registro indicando el id",
     description="Metodo para eliminar un registro indicando el id",)
-async def delete_cliente(id_cliente:int,level: int = Depends(get_current_level)):
-    if level==0:
+async def delete_cliente(id_cliente:int,credentials:HTTPAuthorizationCredentials = Depends(securityBearer)):
+    user = auth.get_account_info(credentials.credentials)
+    uid = user['users'][0]['localId']
+    level = db.child("users").child(uid).child("Nivel").get().val()
+    if level==1:
         with sqlite3.connect("sql/clientes.sqlite") as connection:
             connection.row_factory = sqlite3.Row
             cursor = connection.cursor()
@@ -225,4 +247,56 @@ async def get_user(credentials:HTTPAuthorizationCredentials = Depends(securityBe
         
     except Exception as error:
         print(f"ERROR: {error}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+@app.post(
+    "/user/",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Agrega un nuevo usuario",
+    description="Agrega un nuevo usuario",
+    tags=["Agregar"]
+)
+def agregar_usuario(usuario:Usuario):
+    correos = usuario.username
+    passwords = usuario.password
+    auth = firebase.auth()
+    db = firebase.database()
+
+    try:
+	   
+        user = auth.create_user_with_email_and_password(correos, passwords)
+        Token = user["idToken"]
+        Informacion = auth.get_account_info(Token)
+        uid = Informacion["users"][0]["localId"]
+        email = Informacion["users"][0]["email"]
+        info = {"email" : email, "Nivel" : 1}
+        user_data = db.child("users").child(uid).set(info)
+        response = {"userdata": user}
+        return response
+
+    except Exception as error:
+        print(f"Error : {error}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+@app.post(
+    "/user/token/",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Metodo de inicio de sesion",
+    description="Metodo de inicio de sesion",
+    tags=["Iniciar_sesion"],
+)
+async def inicio_sesion(usuario:Usuario):
+    correos = usuario.username
+    passwords = usuario.password
+    auth = firebase.auth()
+   
+    try:
+    	
+        user = auth.sign_in_with_email_and_password(correos, passwords)
+        Tokenuser = user["idToken"]
+        response = {f"user": Tokenuser}
+        return response
+
+    except Exception as error:
+        print(f"Error : {error}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
